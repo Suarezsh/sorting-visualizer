@@ -1,0 +1,513 @@
+<title>Sorting Visualizer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+:root {
+  --bg:      #07090f;
+  --surf:    #0d1117;
+  --surf2:   #131c27;
+  --surf3:   #1a2538;
+  --border:  #1e2d46;
+  --border2: #2a3f62;
+  --text:    #cdd9f0;
+  --dim:     #465870;
+  --accent:  #58a6ff;
+  --cmp:     #e3b341;
+  --swp:     #f85149;
+  --srt:     #3fb950;
+  --pvt:     #d2a8ff;
+  --mrg:     #39c5cf;
+  color-scheme: dark;
+  --fu: 'Space Grotesk', system-ui, sans-serif;
+  --fm: 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--fu);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-left:  max(16px, env(safe-area-inset-left,  0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+}
+
+/* ── Header ── */
+.hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.hdr-title { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.hdr-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.hdr-sub { font-size: .75rem; color: var(--dim); font-family: var(--fm); }
+
+/* ── Algo tabs ── */
+.algo-tabs {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  padding: 12px 0 8px;
+}
+.atab {
+  padding: 5px 16px; border-radius: 6px; border: 1px solid var(--border2);
+  cursor: pointer; font-family: var(--fu); font-size: .8rem; font-weight: 500;
+  background: var(--surf2); color: var(--dim); transition: all .15s;
+}
+.atab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.atab:hover:not(.active) { background: var(--surf3); color: var(--text); }
+
+/* ── Complexity bar ── */
+.complexity {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  padding: 6px 10px;
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+.cplx-item { font-family: var(--fm); font-size: .72rem; }
+.cplx-lbl { color: var(--dim); }
+.cplx-val { color: var(--accent); margin-left: 3px; }
+
+/* ── Canvas area ── */
+.canvas-wrap {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  flex: 1;
+  min-height: 260px;
+  position: relative;
+}
+#sortCanvas { width: 100%; display: block; }
+
+/* State label */
+.state-badge {
+  position: absolute; top: 10px; right: 12px;
+  font-family: var(--fm); font-size: .72rem;
+  padding: 3px 10px; border-radius: 20px;
+  background: var(--surf2); border: 1px solid var(--border2);
+  color: var(--dim); transition: all .3s;
+}
+.state-badge.running { border-color: var(--cmp); color: var(--cmp); }
+.state-badge.done    { border-color: var(--srt); color: var(--srt); }
+
+/* ── Stats ── */
+.stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin: 10px 0; }
+.stat {
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: 8px; padding: 9px 12px;
+}
+.stat-lbl { font-size: .66rem; color: var(--dim); text-transform: uppercase; letter-spacing: .07em; }
+.stat-val { font-family: var(--fm); font-size: 1.1rem; font-weight: 500; color: var(--accent); font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+/* ── Controls ── */
+.controls {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: 10px; padding: 9px 12px;
+  margin-bottom: 16px;
+}
+.btn {
+  padding: 6px 18px; border-radius: 7px; border: none;
+  cursor: pointer; font-family: var(--fu); font-size: .82rem;
+  font-weight: 500; transition: all .15s;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { filter: brightness(1.12); }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; filter: none; }
+.btn-ghost  { background: var(--surf2); color: var(--text); border: 1px solid var(--border2); }
+.btn-ghost:hover  { background: var(--surf3); }
+.ctrl-grp { display: flex; align-items: center; gap: 6px; }
+.ctrl-lbl { font-size: .72rem; color: var(--dim); white-space: nowrap; }
+.ctrl-val { font-family: var(--fm); font-size: .72rem; color: var(--accent); min-width: 24px; text-align: right; }
+input[type=range] { width: 80px; accent-color: var(--accent); cursor: pointer; }
+
+/* ── Legend ── */
+.legend {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  padding: 6px 0 14px;
+}
+.leg { display: flex; align-items: center; gap: 5px; font-size: .7rem; color: var(--dim); }
+.leg-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+@media (max-width: 600px) {
+  .stats { grid-template-columns: repeat(2,1fr); }
+  .complexity { gap: 8px; }
+}
+</style>
+
+<header class="hdr">
+  <div class="hdr-title">
+    <span class="hdr-dot"></span>
+    Sorting Visualizer
+  </div>
+  <span class="hdr-sub">5 algoritmos · tiempo real</span>
+</header>
+
+<div class="algo-tabs" id="algoTabs">
+  <button class="atab active" data-algo="bubble">Bubble Sort</button>
+  <button class="atab" data-algo="selection">Selection Sort</button>
+  <button class="atab" data-algo="insertion">Insertion Sort</button>
+  <button class="atab" data-algo="merge">Merge Sort</button>
+  <button class="atab" data-algo="quick">Quick Sort</button>
+</div>
+
+<div class="complexity" id="complexityBar">
+  <span class="cplx-item"><span class="cplx-lbl">Mejor:</span><span class="cplx-val" id="cBest">O(n)</span></span>
+  <span class="cplx-item"><span class="cplx-lbl">Promedio:</span><span class="cplx-val" id="cAvg">O(n²)</span></span>
+  <span class="cplx-item"><span class="cplx-lbl">Peor:</span><span class="cplx-val" id="cWorst">O(n²)</span></span>
+  <span class="cplx-item"><span class="cplx-lbl">Espacio:</span><span class="cplx-val" id="cSpace">O(1)</span></span>
+</div>
+
+<div class="canvas-wrap">
+  <canvas id="sortCanvas"></canvas>
+  <div class="state-badge" id="stateBadge">Listo</div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-lbl">Comparaciones</div><div class="stat-val" id="sCmp">0</div></div>
+  <div class="stat"><div class="stat-lbl">Intercambios</div><div class="stat-val" id="sSwp">0</div></div>
+  <div class="stat"><div class="stat-lbl">Tiempo (ms)</div><div class="stat-val" id="sTime">—</div></div>
+  <div class="stat"><div class="stat-lbl">Elementos</div><div class="stat-val" id="sSize">60</div></div>
+</div>
+
+<div class="controls">
+  <button class="btn btn-primary" id="btnPlay">▶ Iniciar</button>
+  <button class="btn btn-ghost"   id="btnGen">⟳ Nuevo arreglo</button>
+  <div class="ctrl-grp">
+    <span class="ctrl-lbl">Tamaño</span>
+    <input type="range" id="sldSize" min="20" max="150" value="60">
+    <span class="ctrl-val" id="sizeVal">60</span>
+  </div>
+  <div class="ctrl-grp">
+    <span class="ctrl-lbl">Velocidad</span>
+    <input type="range" id="sldSpeed" min="1" max="100" value="50">
+    <span class="ctrl-val" id="speedVal">50</span>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:#58a6ff"></div>Sin ordenar</div>
+  <div class="leg"><div class="leg-dot" style="background:#e3b341"></div>Comparando</div>
+  <div class="leg"><div class="leg-dot" style="background:#f85149"></div>Intercambiando</div>
+  <div class="leg"><div class="leg-dot" style="background:#3fb950"></div>Ordenado</div>
+  <div class="leg"><div class="leg-dot" style="background:#d2a8ff"></div>Pivote</div>
+  <div class="leg"><div class="leg-dot" style="background:#39c5cf"></div>Fusionando</div>
+</div>
+
+<script>
+// ── Complejidades ──────────────────────────────────────────────────────────────
+const COMPLEXITY = {
+  bubble:    {best:'O(n)',       avg:'O(n²)',       worst:'O(n²)',       space:'O(1)'},
+  selection: {best:'O(n²)',      avg:'O(n²)',       worst:'O(n²)',       space:'O(1)'},
+  insertion: {best:'O(n)',       avg:'O(n²)',       worst:'O(n²)',       space:'O(1)'},
+  merge:     {best:'O(n log n)', avg:'O(n log n)',  worst:'O(n log n)',  space:'O(n)'},
+  quick:     {best:'O(n log n)', avg:'O(n log n)',  worst:'O(n²)',       space:'O(log n)'},
+};
+
+// ── Estado ─────────────────────────────────────────────────────────────────────
+let bars = [];
+let N = 60, delay = 12;
+let algo = 'bubble';
+let gen = 0; // generation counter para cancelar sorts
+let cmps = 0, swps = 0, t0 = 0;
+
+const COLORS = {
+  default:   '#1e3a5c',
+  comparing: '#e3b341',
+  swapping:  '#f85149',
+  sorted:    '#3fb950',
+  pivot:     '#d2a8ff',
+  merging:   '#39c5cf',
+};
+
+const canvas = document.getElementById('sortCanvas');
+const ctx    = canvas.getContext('2d');
+
+// ── Resize canvas ──────────────────────────────────────────────────────────────
+function resizeCanvas() {
+  const wrap = canvas.parentElement;
+  canvas.width  = wrap.clientWidth;
+  canvas.height = Math.max(220, Math.min(wrap.clientWidth * 0.45, 340));
+  render();
+}
+
+// ── Generate array ─────────────────────────────────────────────────────────────
+function generate() {
+  gen++;
+  bars = Array.from({length: N}, () => ({v: Math.floor(Math.random()*88)+8, s:'default'}));
+  cmps = 0; swps = 0;
+  updateStats();
+  setBadge('Listo', '');
+  setBtn(false);
+  render();
+}
+
+function setAll(state) { bars.forEach(b => b.s = state); }
+function setState(i, s) { if (i >= 0 && i < bars.length) bars[i].s = s; }
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function render() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // faint horizontal lines
+  ctx.strokeStyle = 'rgba(30,45,70,.5)'; ctx.lineWidth = .5;
+  for (let y = H*.25; y < H; y += H*.25) {
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+
+  const gap = 1;
+  const bw = (W - gap*(N-1)) / N;
+  const maxV = 96;
+
+  bars.forEach((bar, i) => {
+    const x  = i * (bw + gap);
+    const bh = (bar.v / maxV) * (H - 4);
+    const y  = H - bh;
+    const col = COLORS[bar.s] || COLORS.default;
+
+    // glow on active
+    if (bar.s !== 'default' && bar.s !== 'sorted') {
+      ctx.shadowColor = col;
+      ctx.shadowBlur  = 6;
+    }
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.roundRect(x, y, Math.max(bw, 1), bh, bw > 4 ? 2 : 0);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  });
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('sCmp').textContent  = cmps.toLocaleString();
+  document.getElementById('sSwp').textContent  = swps.toLocaleString();
+  document.getElementById('sSize').textContent = N;
+  if (t0) document.getElementById('sTime').textContent = (Date.now()-t0).toLocaleString();
+}
+
+function setBadge(txt, cls) {
+  const b = document.getElementById('stateBadge');
+  b.textContent = txt;
+  b.className = 'state-badge ' + cls;
+}
+
+function setBtn(sorting) {
+  document.getElementById('btnPlay').disabled = sorting;
+}
+
+// ── Sleep ──────────────────────────────────────────────────────────────────────
+function sleep() { return new Promise(r => setTimeout(r, delay)); }
+
+// ── Algorithms ────────────────────────────────────────────────────────────────
+
+async function bubbleSort(g) {
+  const n = bars.length;
+  for (let i = 0; i < n-1; i++) {
+    for (let j = 0; j < n-i-1; j++) {
+      if (gen !== g) return;
+      setState(j,'comparing'); setState(j+1,'comparing'); cmps++;
+      render(); updateStats(); await sleep();
+      if (bars[j].v > bars[j+1].v) {
+        setState(j,'swapping'); setState(j+1,'swapping'); swps++;
+        render(); await sleep();
+        [bars[j], bars[j+1]] = [bars[j+1], bars[j]];
+      }
+      setState(j,'default'); setState(j+1,'default');
+    }
+    setState(n-1-i,'sorted');
+  }
+  setState(0,'sorted');
+}
+
+async function selectionSort(g) {
+  const n = bars.length;
+  for (let i = 0; i < n-1; i++) {
+    let minIdx = i;
+    setState(i,'pivot');
+    for (let j = i+1; j < n; j++) {
+      if (gen !== g) return;
+      setState(j,'comparing'); cmps++;
+      render(); updateStats(); await sleep();
+      if (bars[j].v < bars[minIdx].v) {
+        if (minIdx !== i) setState(minIdx,'default');
+        minIdx = j;
+        setState(minIdx,'pivot');
+      } else setState(j,'default');
+    }
+    if (minIdx !== i) {
+      setState(i,'swapping'); setState(minIdx,'swapping'); swps++;
+      render(); await sleep();
+      [bars[i], bars[minIdx]] = [bars[minIdx], bars[i]];
+    }
+    setState(i,'sorted');
+    if (minIdx !== i) setState(minIdx,'default');
+  }
+  setState(bars.length-1,'sorted');
+}
+
+async function insertionSort(g) {
+  setState(0,'sorted');
+  const n = bars.length;
+  for (let i = 1; i < n; i++) {
+    if (gen !== g) return;
+    const key = bars[i].v;
+    setState(i,'pivot');
+    render(); await sleep();
+    let j = i - 1;
+    while (j >= 0 && bars[j].v > key) {
+      if (gen !== g) return;
+      setState(j,'comparing'); cmps++;
+      render(); updateStats(); await sleep();
+      bars[j+1].v = bars[j].v; swps++;
+      setState(j+1,'swapping');
+      render(); await sleep();
+      setState(j+1,'sorted');
+      setState(j,'sorted');
+      j--;
+    }
+    bars[j+1].v = key;
+    setState(j+1,'sorted');
+    render();
+  }
+}
+
+async function mergeSort(g) {
+  await mergeSortHelper(g, 0, bars.length-1);
+  if (gen === g) setAll('sorted');
+}
+
+async function mergeSortHelper(g, l, r) {
+  if (l >= r || gen !== g) return;
+  const m = Math.floor((l+r)/2);
+  await mergeSortHelper(g, l, m);
+  await mergeSortHelper(g, m+1, r);
+  await merge(g, l, m, r);
+}
+
+async function merge(g, l, m, r) {
+  const left  = bars.slice(l, m+1).map(b => b.v);
+  const right = bars.slice(m+1, r+1).map(b => b.v);
+  let i=0, j=0, k=l;
+  while (i<left.length && j<right.length) {
+    if (gen !== g) return;
+    setState(k,'merging'); cmps++;
+    render(); updateStats(); await sleep();
+    if (left[i] <= right[j]) { bars[k].v = left[i++]; }
+    else                     { bars[k].v = right[j++]; swps++; }
+    setState(k,'merging'); k++;
+  }
+  while (i < left.length) {
+    if (gen !== g) return;
+    bars[k].v = left[i++]; setState(k,'merging'); k++;
+    render(); await sleep();
+  }
+  while (j < right.length) {
+    if (gen !== g) return;
+    bars[k].v = right[j++]; setState(k,'merging'); k++;
+    render(); await sleep();
+  }
+  for (let x=l; x<=r; x++) setState(x,'sorted');
+  render();
+}
+
+async function quickSort(g) {
+  await quickHelper(g, 0, bars.length-1);
+  if (gen === g) setAll('sorted');
+}
+
+async function quickHelper(g, lo, hi) {
+  if (lo >= hi || gen !== g) return;
+  const p = await partition(g, lo, hi);
+  if (gen !== g) return;
+  await quickHelper(g, lo, p-1);
+  await quickHelper(g, p+1, hi);
+}
+
+async function partition(g, lo, hi) {
+  const pivot = bars[hi].v;
+  setState(hi,'pivot');
+  let i = lo - 1;
+  for (let j = lo; j < hi; j++) {
+    if (gen !== g) return lo;
+    setState(j,'comparing'); cmps++;
+    render(); updateStats(); await sleep();
+    if (bars[j].v <= pivot) {
+      i++;
+      if (i !== j) {
+        setState(i,'swapping'); setState(j,'swapping'); swps++;
+        render(); await sleep();
+        [bars[i], bars[j]] = [bars[j], bars[i]];
+      }
+      setState(i,'default');
+    }
+    setState(j,'default');
+  }
+  [bars[i+1], bars[hi]] = [bars[hi], bars[i+1]]; swps++;
+  setState(hi,'default');
+  setState(i+1,'sorted');
+  render(); await sleep();
+  return i+1;
+}
+
+// ── Run ────────────────────────────────────────────────────────────────────────
+async function run() {
+  setBtn(true);
+  setBadge('Ordenando…','running');
+  setAll('default');
+  cmps = 0; swps = 0; t0 = Date.now();
+  const g = ++gen;
+
+  const fns = {bubble:bubbleSort, selection:selectionSort,
+               insertion:insertionSort, merge:mergeSort, quick:quickSort};
+  await fns[algo](g);
+
+  if (gen === g) {
+    setAll('sorted'); render();
+    updateStats();
+    document.getElementById('sTime').textContent = (Date.now()-t0).toLocaleString();
+    setBadge('¡Ordenado!','done');
+  }
+  setBtn(false);
+}
+
+// ── Controls ───────────────────────────────────────────────────────────────────
+document.getElementById('btnPlay').addEventListener('click', run);
+document.getElementById('btnGen').addEventListener('click', generate);
+
+document.getElementById('sldSize').addEventListener('input', e => {
+  N = +e.target.value;
+  document.getElementById('sizeVal').textContent = N;
+  generate();
+});
+
+document.getElementById('sldSpeed').addEventListener('input', e => {
+  const v = +e.target.value;
+  document.getElementById('speedVal').textContent = v;
+  delay = Math.round(105 - v); // invert: high slider = low delay = fast
+});
+
+document.getElementById('algoTabs').addEventListener('click', e => {
+  const btn = e.target.closest('.atab'); if (!btn) return;
+  document.querySelectorAll('.atab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  algo = btn.dataset.algo;
+  const c = COMPLEXITY[algo];
+  document.getElementById('cBest').textContent   = c.best;
+  document.getElementById('cAvg').textContent    = c.avg;
+  document.getElementById('cWorst').textContent  = c.worst;
+  document.getElementById('cSpace').textContent  = c.space;
+  generate();
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+resizeCanvas();
+generate();
+window.addEventListener('resize', () => { resizeCanvas(); render(); });
+</script>
